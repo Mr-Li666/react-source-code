@@ -109,13 +109,19 @@ function noopOnRecoverableError() {
   // legacy API.
 }
 
-function legacyCreateRootFromDOMContainer( // render时候如果是初次渲染就会调用该函数创建根节点，如果不是初次就会直接调用updateContainer
-  container: Container,
+function legacyCreateRootFromDOMContainer( 
+  // render时候如果是初次渲染就会调用该函数创建根节点，如果不是初次就会直接调用updateContainer
+  container: Container, // <div id="root"></div>
   initialChildren: ReactNodeList,
   parentComponent: ?React$Component<any, any>,
   callback: ?Function,
   isHydrationContainer: boolean,
 ): FiberRoot {
+  /**
+   * 判断是否为服务端渲染
+   * 如果是服务器渲染，复用container创建一个服务端渲染的container
+   * 如果不是服务端渲染，清空container中的节点
+   */
   if (isHydrationContainer) { //初始为false
     if (typeof callback === 'function') {
       const originalCallback = callback;
@@ -150,10 +156,22 @@ function legacyCreateRootFromDOMContainer( // render时候如果是初次渲染�
   } else {
     // First clear any existing content.
     let rootSibling;
+    //循环删除 container 容器中的节点
+    /**
+     * 为什么要清除 container 中的元素？？？
+     * 因为有时可能需要在 container 中放一些占位图 或者loading 以提高首屏加载的效果
+     * 所以在 react element 渲染到 container 之前， 必须要清空 container
+     * 因为占位图和 react element 不能同时显示
+     */
     while ((rootSibling = container.lastChild)) {
       container.removeChild(rootSibling);
     }
 
+
+    /**
+     * 使用函数的call方法改变 callback 函数中的this指向， 
+     * 指向render方法的第一个参数的真实DOM对象
+     */
     if (typeof callback === 'function') { // render的第三个参数
       const originalCallback = callback;
       callback = function() {
@@ -198,7 +216,9 @@ function legacyCreateRootFromDOMContainer( // render时候如果是初次渲染�
       container.nodeType === COMMENT_NODE ? container.parentNode : container;
     listenToAllSupportedEvents(rootContainerElement);// 事件绑定，将所有的事件分配相关的优先级并绑定在root上
 
-    // Initial mount should not be batched. //初始渲染阶段调用的更新是同步的不是批量
+    // Initial mount should not be batched. 
+    //初始渲染阶段调用的更新是同步的，不是批量更新
+    // 因为初始化渲染时应该尽快完成 不能呗打断
     flushSync(() => {
       updateContainer(initialChildren, root, parentComponent, callback);
     });
@@ -220,18 +240,26 @@ function warnOnInvalidCallback(callback: mixed, callerName: string): void {
   }
 }
 
+/** 
+ * 将子树渲染到容器中，初始化Fiber数据结构：创建 fiberRoot 和 rootfiber
+*/
 function legacyRenderSubtreeIntoContainer( //render实则就是调用该函数
-  parentComponent: ?React$Component<any, any>, // null
-  children: ReactNodeList,
-  container: Container,
-  forceHydrate: boolean, // false
-  callback: ?Function,
+  parentComponent: ?React$Component<any, any>, // 父组件，初始传入null
+  children: ReactNodeList, //render方法的第一个参数， 要渲染的reactElement
+  container: Container, //渲染的容器
+  forceHydrate: boolean, // 当前是否为服务器渲染、false
+  callback: ?Function, //渲染完成后执行的回调函数
 ) {
   if (__DEV__) {
     topLevelUpdateWarnings(container);
     warnOnInvalidCallback(callback === undefined ? null : callback, 'render');
   }
 
+  /**
+   * 检测container 是否是已经初始化过的渲染容器
+   * react在初始渲染时，会为最外层容器添加 _reactRootContainer 属性， 根据此属性判断是否是第一次渲染
+   * 如果 maybeRoot 不存在，即表示初次渲染
+   */
   const maybeRoot = container._reactRootContainer; // 根节点（root）dom属性指向整个应用的rootFiber（也就是整个fiber树）
   let root: FiberRoot;
   if (!maybeRoot) { //初始渲染的时候

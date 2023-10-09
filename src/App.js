@@ -1,5 +1,5 @@
-import { useEffect, useState, React, useLayoutEffect, useContext, createContext, useCallback, useTransition } from 'react';
-// import * as React from 'react';
+import { useEffect, createElement,useState, React, useLayoutEffect, useContext, createContext, useCallback, useTransition } from 'react';
+// import React from 'react';
 import logo from './logo.svg';
 
 import './App.css';
@@ -8,7 +8,17 @@ import { Routes, Route, UNSAFE_NavigationContext, useNavigate, useNavigation, Li
 
 const Nav = createContext(null) 
 export { Nav }
+
+const Test = (props) => {
+  const {defaltProps,value, name} = props
+  console.log(props.key)
+  return <span className={name} >{value}</span>
+}
 function App() {
+  useEffect(() => {
+    const a = createElement(<Test defaltProps={{value: 1, name: 'test', key: 'a'}} />, {value: 1, name: 'test', key: 'a'}, <a href=''>aaaaa</a>)
+    console.log(a)
+  }, [])
   return (
     <div className="App">
       <header className="App-header">
@@ -103,5 +113,7 @@ function App() {
 //     </div>
 //   )
 // }
+
+
 
 export default App;

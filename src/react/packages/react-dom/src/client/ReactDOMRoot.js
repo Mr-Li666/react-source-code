@@ -133,6 +133,9 @@ ReactDOMHydrationRoot.prototype.render = ReactDOMRoot.prototype.render = functio
   }
   // console.warn('createRoot工作做完后，调用root.render实则是调用updateContainer(children, root, null, null)，children是编译好的<App />根组件，root是我们创建好的FiberRoot')
   // console.log('children, root对应结构：',children, root)
+  /**
+   * updateContainer做的事情其实就是创建一个任务对象，将任务对象放入任务队列中
+   */
   updateContainer(children, root, null, null);
 };
 
@@ -169,7 +172,7 @@ export function createRoot(
   container: Element | DocumentFragment,
   options?: CreateRootOptions,
 ): RootType {
-  // console.log('createRoot会先校验传入的container是否为一个有效的DOM节点，如果是开发环境还会做一些其他校验如是否为body等')
+  console.log('createRoot会先校验传入的container是否为一个有效的DOM节点，如果是开发环境还会做一些其他校验如是否为body等')
   // 校验container是否有效
   if (!isValidContainer(container)) {
     throw new Error('createRoot(...): Target container is not a DOM element.');
@@ -177,12 +180,12 @@ export function createRoot(
 
   warnIfReactDOMContainerInDEV(container);
 
-  let isStrictMode = false;
+  let isStrictMode = false; //严格模式
   let concurrentUpdatesByDefaultOverride = false; // 是否默认开启并发模式
-  let identifierPrefix = '';
-  let onRecoverableError = defaultOnRecoverableError;
-  let transitionCallbacks = null;
-  // 第二个参数不为空时
+  let identifierPrefix = ''; //前缀
+  let onRecoverableError = defaultOnRecoverableError; //可恢复的错误处理方法
+  let transitionCallbacks = null; //过度回调
+  // 1. 第二个参数不为空时 处理 options 中一些可配置的属性
   if (options !== null && options !== undefined) {
     if (__DEV__) {
       if ((options: any).hydrate) {
@@ -225,9 +228,10 @@ export function createRoot(
     }
   }
 
+  //2. 初始化渲染，创建Fiber数据结构 fiberRoot Node
   const root = createContainer(
     container,
-    ConcurrentRoot,
+    ConcurrentRoot, // 1
     null,
     isStrictMode,
     concurrentUpdatesByDefaultOverride,
@@ -235,18 +239,23 @@ export function createRoot(
     onRecoverableError,
     transitionCallbacks,
   );
-  markContainerAsRoot(root.current, container); // 把container这个DOM打上React的标记，就是在DOM上加个属性
+
+  console.log('root: --fiberRoot Node', root)
+  //3. 将 FiberRoot 挂载到 DOM 节点上
+  markContainerAsRoot(root.current, container); // 把container这个DOM打上React的标记，是一个36进制的随机数，就是在DOM上加个属性
   // console.warn('创建完FiberRoot和HostRootFiber后，会根据传入的container是否为注释标签')
   // console.log('如果是则取它的父节点，如果不是就取本身，通过listenToAllSupportedEvents把组成事件(事件委托)')
+  //4. 获取元素节点，根据 container 的类型判断是否为注释节点
   const rootContainerElement: Document | Element | DocumentFragment =
     container.nodeType === COMMENT_NODE
       ? (container.parentNode: any)
-      : container; //判断传入的container是不是注释标签，是就去它父元素
-  //事件绑定
+      : container; //判断传入的container是不是注释标签，是就取它的父元素
+  // 5. 事件绑定 监听根元素节点的所有事件
   listenToAllSupportedEvents(rootContainerElement);
   // console.error(`至此createRoot工作基本做完，主要就是根据传入的DOM创建FiberRoot和HostRootFiber，初始化HostRootFiber的状态以及更新队列
   // 并把HostRootFiber.stateNode指向FiberRoot，把FiberRoot.current指向HostRootFiber，用于更新。
   // 并通过所有浏览器事件名创建对应的带有更新优先级的listener绑定在传入的DOM节点上`)
+  // 6. 返回 ReactDOMRoot
   return new ReactDOMRoot(root);
 }
 

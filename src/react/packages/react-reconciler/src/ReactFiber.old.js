@@ -429,6 +429,19 @@ export function resetWorkInProgress(workInProgress: Fiber, renderLanes: Lanes) {
   return workInProgress;
 }
 
+/**
+ * 
+ * @param {*} tag 
+ * @param {*} isStrictMode 
+ * @param {*} concurrentUpdatesByDefaultOverride 
+ * @returns 
+ * 
+ * HostRootFiber 对应着 Fiber 架构中未被初始化过的 Fiber 树，它被挂载到 FiberRoot 的 current 属性上，它的 stateNode 属性也被设置为 FiberRoot 。
+      createHostRootFiber 是 HostRootFiber 的创建函数，主要做了以下几件事：
+      1. 设置 React Fiber 架构的工作模式 （Concurrent 模式、严格模式、ConcurrentUpdatesByDefaultMode 模式）。
+      2. 设置性能分析的模式。
+      3. 创建 Fiber。
+ */
 export function createHostRootFiber(
   tag: RootTag,
   isStrictMode: boolean,

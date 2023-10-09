@@ -148,6 +148,9 @@ function warnIfStringRefCannotBeAutoConverted(config) {
 const ReactElement = function(type, key, ref, self, source, owner, props) {
   const element = {
     // This tag allows us to uniquely identify this as a React Element
+    /**
+     * react在最终渲染DOM的时候，需要确保元素的类型是REACT_ELEMENT_TYPE， 此属性作为判断的依据
+     */
     $$typeof: REACT_ELEMENT_TYPE,
 
     // Built-in properties that belong on the element
@@ -359,8 +362,18 @@ export function jsxDEV(type, config, maybeKey, source, self) {
  * Create and return a new ReactElement of the given type.
  * See https://reactjs.org/docs/react-api.html#createelement
  */
+/**
+ * type: 元素类型
+ * config： 配置属性
+ * children： 子元素
+ * 1. 分离config中的属性 和 特殊属性（ref、key、 __self、__source），将普通属性放入props数组中
+ * 2. 处理子元素children，如果children是一个，则props.children = children；
+ *    如果children是多个，则放入一个数组childArray中，存入props对象里 props.children = childArray
+ * 3. 处理type和type.defaultProps，并将defaultProps存入props对象中
+ * 4. 基于props、type、ref、key、 __self、__source、，返回ReactElement
+ */
 export function createElement(type, config, children) {
-  let propName;
+  let propName; // 用于后面的两次循环中，避免了重复声明变量，稍微提升性能
 
   // Reserved names are extracted
   const props = {};
@@ -418,6 +431,7 @@ export function createElement(type, config, children) {
 
   // Resolve default props
   if (type && type.defaultProps) {
+    console.log('type.defaultProps: ', type)
     const defaultProps = type.defaultProps;
     for (propName in defaultProps) {
       if (props[propName] === undefined) {

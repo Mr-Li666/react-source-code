@@ -242,7 +242,22 @@ function findHostInstanceWithWarning(
   }
   return findHostInstance(component);
 }
-//调用createFiberRoot创建root
+//调用createFiberRoot创建root对应的 fiber 对象
+/**
+ * 
+ * @param {*} containerInfo 
+ * @param {*} tag 
+ * @param {*} hydrationCallbacks 
+ * @param {*} isStrictMode 
+ * @param {*} concurrentUpdatesByDefaultOverride 
+ * @param {*} identifierPrefix 
+ * @param {*} onRecoverableError 
+ * @param {*} transitionCallbacks 
+ * @returns 
+ * createContainer 函数主要做了两件事：
+ * 1.设置 hydrate 和 initialChildren 两个属性，hydrate 是服务端渲染注水操作的标志，被设置为 false，initialChildren 是初始化的子节点，被设置为 null 
+  2.调用 createFiberRoot 函数创建 FiberRoot
+ */
 export function createContainer(
   containerInfo: Container,
   tag: RootTag,
@@ -255,7 +270,7 @@ export function createContainer(
 ): OpaqueRoot {
   const hydrate = false;
   const initialChildren = null;
-  // console.warn('creatRoot通过createContainer内调用createFiberRoot创建应用里面唯一的一个FiberRoot')
+  // console.warn('creatRoot通过createContainer内调用createFiberRoot创建应用里面唯一的一个FiberRoot, 即根节点对应的fiber对象')
   return createFiberRoot(
     containerInfo,
     tag,
@@ -319,9 +334,9 @@ export function createHydrationContainer(
 }
 //创建update，挂载payload
 export function updateContainer(
-  element: ReactNodeList,
-  container: OpaqueRoot,
-  parentComponent: ?React$Component<any, any>,
+  element: ReactNodeList, //要渲染的 ReactElement
+  container: OpaqueRoot, // FiberRoot对象
+  parentComponent: ?React$Component<any, any>, //父组件，初始为null
   callback: ?Function,
 ): Lane {
   if (__DEV__) {
@@ -334,9 +349,10 @@ export function updateContainer(
     markRenderScheduled(lane);
   }
 
+  //设置FiberRoot.context, 首次执行会返回一个emptyContext， 是一个空对象{}
   const context = getContextForSubtree(parentComponent);
   if (container.context === null) {
-    container.context = context;
+    container.context = context; // container.context = {}
   } else {
     container.pendingContext = context;
   }
@@ -358,9 +374,13 @@ export function updateContainer(
     }
   }
 
+  //创建一个待执行任务
+  console.log(`创建一个待执行任务: updateContainer会通过FiberRoot获取HostRootFiber，再通过HostRootFiber获取优先级，通过优先级和当前时间创建一个update`)
+
   const update = createUpdate(eventTime, lane);
   // Caution: React DevTools currently depends on this property
   // being called "element".
+  //将渲染的内容挂载到更新对象中的 payload 属性
   update.payload = {element};
   callback = callback === undefined ? null : callback;
   if (callback !== null) {
@@ -375,18 +395,18 @@ export function updateContainer(
     }
     update.callback = callback;
   }
-  // console.error(`updateContainer会通过FiberRoot获取HostRootFiber，再通过HostRootFiber获取优先级，通过优先级和当前时间创建一个update，
   // 并把编译好的App根节点赋予update.payload表示要更新的节点，然后调用enqueueUpdate初始化HostRootFiber的updatequeue，
   // updatequeue是一个环状的链表`)
   // console.log('优先级，update对应结构：', lane, update)
   enqueueUpdate(current, update, lane);
   // console.warn('updatequeue结构如下：',current.updateQueue)
-  // console.log('初始化更新队列后，调用scheduleUpdateOnFiber开始执行更新')
+  console.log('初始化更新队列后，调用scheduleUpdateOnFiber开始执行更新')
   const root = scheduleUpdateOnFiber(current, lane, eventTime);
   if (root !== null) {
     entangleTransitions(root, current, lane);
   }
 
+  //返回这个双向链表
   return lane;
 }
 
@@ -400,17 +420,27 @@ export {
   flushPassiveEffects,
 };
 
+/**
+ * 
+ * @param {*} container 
+ * @returns 
+ * 获取 container 的第一个子元素的实例DOM
+ */
 export function getPublicRootInstance(
   container: OpaqueRoot,
 ): React$Component<any, any> | PublicInstance | null {
   const containerFiber = container.current;
+  //如果 container 没有子元素， 直接返回null
   if (!containerFiber.child) {
     return null;
   }
+  //匹配子元素的类型
   switch (containerFiber.child.tag) {
+    //普通的DOM元素
     case HostComponent:
       return getPublicInstance(containerFiber.child.stateNode);
     default:
+      //返回子元素的真实DOM对象
       return containerFiber.child.stateNode;
   }
 }

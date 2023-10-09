@@ -1494,6 +1494,8 @@ function checkIfSnapshotChanged(inst) {
 function forceStoreRerender(fiber) {
   scheduleUpdateOnFiber(fiber, SyncLane, NoTimestamp);
 }
+
+
 // 初次渲染调用的usestate
 function mountState<S>(
   initialState: (() => S) | S,

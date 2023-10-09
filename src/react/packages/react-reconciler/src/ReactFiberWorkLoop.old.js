@@ -516,20 +516,34 @@ function requestRetryLane(fiber: Fiber) {
 }
 // 调度更新
 let log = 0
+/**
+ * 
+ * @param {*} fiber 
+ * @param {*} lane 
+ * @param {*} eventTime 
+ * @returns 
+ * 
+ * scheduleUpdateOnFiber 主要是处理优先级和挂载更新节点
+ */
 export function scheduleUpdateOnFiber(
   fiber: Fiber,
   lane: Lane,
   eventTime: number,
 ): FiberRoot | null {
-  checkForNestedUpdates();// 检测是否死循环
+  /**
+   *  检测是否是无限循环的update， 如果是就报错
+   * 在 componentWillUpdate 或 componentDidUpdate 生命周期中重复调用 setState， 可能会发生这种情况
+   * react 限制了嵌套更新的数量，以防止无限更新， 限制数量为 NESTED_UPDATE_LIMIT = 50
+   */
+  checkForNestedUpdates();
   if (__DEV__) {
     if (isRunningInsertionEffect) {
       console.error('useInsertionEffect must not schedule updates.');
     }
   }
   if(log === 0) {
-    // console.error(`先总结下scheduleUpdateOnFiber的作用，首先他会去判断本次触发的更新是不是死循环，例如在didupdate调用setstate等。
-    // 其次会重当前更新节点一直递归到HostRootFiber，递归过程主要是更新current tree和workInProgress tree 的子节点的优先级`)
+    // console.log(`先总结下scheduleUpdateOnFiber的作用，首先他会去判断本次触发的更新是不是死循环，例如在didupdate调用setstate等。
+    // 其次会从当前更新节点一直递归到HostRootFiber，递归过程主要是更新current tree和workInProgress tree 的子节点的优先级`)
   }
   //markUpdateLaneFromFiberToRoot这是一个从当前更新节点到hostrootfiber的一个向上递归过程主要用于更新递归路径上fiber的lanes
   const root = markUpdateLaneFromFiberToRoot(fiber, lane);
@@ -632,6 +646,7 @@ export function scheduleUpdateOnFiber(
       }
     }
     ensureRootIsScheduled(root, eventTime);
+
     if (
       lane === SyncLane &&
       executionContext === NoContext &&
